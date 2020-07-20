@@ -1,5 +1,5 @@
 <template>
-  <div class="goods">
+  <div class="goods" @click="itemClick">
     <img :src="getImg" alt="" @load="imageLoad">
     <div class="goods-info">
       <p>{{goods.title}}</p>
@@ -23,8 +23,15 @@
     },
     methods: {
       imageLoad() {
-        console.log('image load..')
         this.$bus.$emit('itemImageLoaded')
+        // if(this.$route.path.indexOf('/home')) {
+        //   this.$bus.$emit('itemImageLoaded')
+        // } else if(this.$route.path.indexOf('/detail')) {
+        //   this.$bus.$emit('itemImageLoadedDetail')
+        // }        
+      },
+      itemClick() {
+        this.$router.push('/detail/' + this.goods.iid)
       }
     },
     computed: {
