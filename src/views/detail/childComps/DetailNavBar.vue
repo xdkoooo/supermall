@@ -6,8 +6,8 @@
             </div>            
             <div slot="center" class="title">
                 <div class="title-item" 
-                v-for="(item, index) in titles" :key="item"
-                :class="{active: index === currentIndex}"
+                v-for="(item, index) in titles" :key="index"
+                :class="{active: index == currentIndex}"
                 @click="titleClick(index)"
                 >{{item}}</div>
             </div>
@@ -35,6 +35,7 @@ export default {
       titleClick(index) {
           console.log(index);
           this.currentIndex = index
+          this.$emit('tabClick', index)
       },
       backClick() {
           this.$router.back()

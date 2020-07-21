@@ -1,15 +1,18 @@
 <template>
   <div id="detail">
-    <detail-nav-bar class="detail-nav"/>
-    <scroll class="content" ref="scroll">
+    <detail-nav-bar class="detail-nav" @tabClick="tabClick" ref="detailNav"/>
+    <scroll class="content" ref="scroll" :probe-type="3"
+    @scroll="contentScroll">
       <detail-swiper :topImages="topImages"/>
       <detail-base-info :goods="goods"/>
       <detail-shop-info :shop="shop"/>
       <detail-goods-info :detailInfo="detailInfo" @imageLoad="imageLoad"/>
-      <detail-param-info :paramInfo="paramInfo" />
-      <detail-comment-info :commentInfo="commentInfo"/>
-      <goods-list :goodsList="recommends"/>
-    </scroll>    
+      <detail-param-info ref="params" :paramInfo="paramInfo" />
+      <detail-comment-info ref="comment" :commentInfo="commentInfo"/>
+      <goods-list ref="recommend" :goodsList="recommends"/>      
+    </scroll>
+    <detail-bottom-bar /> 
+    <back-top @click.native="backClick" v-show="isShowBackTop"/>  
   </div>
 </template>
 
@@ -21,12 +24,14 @@
   import DetailGoodsInfo from './childComps/DetailGoodsInfo';
   import DetailParamInfo from './childComps/DetailParamInfo';
   import DetailCommentInfo from './childComps/DetailCommentInfo';
-  import GoodsList from 'views/home/childComps/GoodsList'
+  import GoodsList from 'views/home/childComps/GoodsList';
+  import DetailBottomBar from './childComps/DetailBottomBar';
 
+  // import BackTop from 'components/content/backTop/BackTop' 混入
   import Scroll from 'components/common/scroll/Scroll'
 
   import { debounce } from 'common/utils'
-  import { itemListenerMixin } from 'common/mixin'
+  import { itemListenerMixin, backTopMixin } from 'common/mixin'
 
   import { getDetail, getRecomment, Goods, Shop, GoodsParam } from 'network/detail';
 
@@ -41,10 +46,12 @@ export default {
     DetailParamInfo,
     DetailCommentInfo,
     GoodsList,
+    DetailBottomBar,
 
+    // BackTop, 混入
     Scroll
   },
-  mixins: [itemListenerMixin],
+  mixins: [itemListenerMixin, backTopMixin],
   data(){
     return {
       iid: null,
@@ -54,7 +61,11 @@ export default {
       detailInfo: {},
       paramInfo: {},
       commentInfo: {},
-      recommends: [],      
+      recommends: [], 
+      themeTopYs: [],
+      getThemeTopY: null,
+      currentIndex: 0,
+      // isShowBackTop: false, 混入
     }
   },
   created(){
@@ -70,10 +81,30 @@ export default {
       if (data.rate.list) {
         this.commentInfo = data.rate.list[0];
       }
+
+      // this.$nextTick(() => {
+      //   // 此时没有图片的高度
+      //   this.themeTopYs.push(0)
+      //   this.themeTopYs.push(this.$refs.params.$el.offsetTop)
+      //   this.themeTopYs.push(this.$refs.comment.$el.offsetTop)
+      //   this.themeTopYs.push(this.$refs.recommend.$el.offsetTop)
+      // })
     })
     getRecomment(this.iid).then(res => {
       this.recommends = res.data.list
+
+      // this.$nextTick(() => {
+      //   this.themeTopYs.push(this.$refs.recommend.$el.offsetTop)
+      // })
     })
+    this.getThemeTopY = debounce(() => {
+      this.themeTopYs = []
+      this.themeTopYs.push(0)
+      this.themeTopYs.push(this.$refs.params.$el.offsetTop)
+      this.themeTopYs.push(this.$refs.comment.$el.offsetTop)
+      this.themeTopYs.push(this.$refs.recommend.$el.offsetTop)
+      this.themeTopYs.push(Number.MAX_VALUE)
+    }, 100)
   },
   mounted(){
     // let newRefresh = debounce(this.$refs.scroll.refresh, 100)
@@ -81,8 +112,16 @@ export default {
     //   newRefresh()
     // }
     // this.$bus.$on('itemImageLoaded', this.itemImageListener)
-    console.log('detail-mounted')
+    console.log('detail-$route:', this.$route);
   },
+  // updated() {
+    // 更新太频繁
+  //   this.themeTopYs = []
+  //   this.themeTopYs.push(0)
+  //   this.themeTopYs.push(this.$refs.params.$el.offsetTop)
+  //   this.themeTopYs.push(this.$refs.comment.$el.offsetTop)
+  //   this.themeTopYs.push(this.$refs.recommend.$el.offsetTop)
+  // },
   destroyed() {
     this.$bus.$off('itemImageLoaded', this.itemImageListener)
   },
@@ -95,7 +134,39 @@ export default {
     imageLoad() {
       console.log('this.$refs:', this.$refs);
       this.$refs.scroll.refresh();
-    }
+      this.getThemeTopY()
+    },
+    tabClick(index) {
+      console.log('tabClick--', index)
+      this.$refs.scroll.scrollTo(0, -(this.themeTopYs[index]), 100)
+    },
+    contentScroll(position) {
+      // console.log('scroll-position:', position);
+      const positionY = -position.y;
+      let length = this.themeTopYs.length
+      // for(let i in this.themeTopYs) {        
+      //   if(this.currentIndex != i && ((i < length -1 && positionY >= this.themeTopYs[parseInt(i)] && positionY < this.themeTopYs[parseInt(i) + 1]) ||
+      //   (i == length - 1 && positionY >= this.themeTopYs[parseInt(i)]))) {
+      //     this.currentIndex = i 
+      //     console.log(this.currentIndex) 
+      //     this.$refs.detailNav.currentIndex = this.currentIndex     
+      //   }
+      // }
+
+      for(let i = 0; i < length - 1; i++) {        
+        if(this.currentIndex !== i && (positionY >= this.themeTopYs[i] && positionY < this.themeTopYs[i + 1])) {
+          this.currentIndex = i 
+          console.log(this.currentIndex) 
+          this.$refs.detailNav.currentIndex = this.currentIndex
+        }
+      }
+
+      // 判断回到顶部
+      this.isShowBackTop = Math.abs(position.y) > 1000 
+    },
+    // backClick() {
+    //   this.$refs.scroll.scrollTo(0, 0);
+    // }, 混入
   },
 }
 </script>
@@ -103,8 +174,8 @@ export default {
 <style scoped>
   #detail {
     position: relative;
-    z-index: 9;
-    background-color: #fff;
+    /* z-index: 9;
+    background-color: #fff; */
     height: 100vh;
   }
   .detail-nav {
@@ -113,7 +184,7 @@ export default {
     background-color: #fff;
   }
   .content {
-    height: calc(100% - 44px);
+    height: calc(100% - 44px - 49px);
     overflow: hidden;
   }
 </style>

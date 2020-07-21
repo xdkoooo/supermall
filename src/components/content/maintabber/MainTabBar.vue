@@ -1,5 +1,5 @@
 <template>
-  <tab-bar>
+  <tab-bar v-show="$route.meta.showTabBar">
       <tab-bar-item path="/home" activeColor="red">
         <img slot="item-icon" src="~assets/img/tabbar/home.svg" alt="">
         <img slot="item-icon-active" src="~assets/img/tabbar/home_active.svg" alt="">
@@ -35,7 +35,9 @@ export default {
     return {
     }
   },
-  created(){},
+  created(){
+    console.log('this.$route', this.$route);
+  },
   mounted(){},
   watch:{},
   computed:{},
